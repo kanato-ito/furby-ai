@@ -17,7 +17,7 @@ import sounddevice as sd
 import vosk
 import webrtcvad
 import edge_tts
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 SAMPLE_RATE = 16000
@@ -48,26 +48,26 @@ def motor_setup() -> None:
         return
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(MOTOR_PIN, GPIO.OUT)
-    GPIO.output(MOTOR_PIN, GPIO.LOW)
+    GPIO.output(MOTOR_PIN, GPIO.HIGH)  # PNP: HIGH = OFF（初期状態）
 
 
 def motor_on() -> None:
     if HAS_GPIO:
-        GPIO.output(MOTOR_PIN, GPIO.HIGH)
+        GPIO.output(MOTOR_PIN, GPIO.LOW)   # PNP: LOW = ON
     else:
         print("    [モーター ON (シミュレーション)]")
 
 
 def motor_off() -> None:
     if HAS_GPIO:
-        GPIO.output(MOTOR_PIN, GPIO.LOW)
+        GPIO.output(MOTOR_PIN, GPIO.HIGH)  # PNP: HIGH = OFF
     else:
         print("    [モーター OFF (シミュレーション)]")
 
 
 def motor_cleanup() -> None:
     if HAS_GPIO:
-        GPIO.output(MOTOR_PIN, GPIO.LOW)
+        GPIO.output(MOTOR_PIN, GPIO.HIGH)  # PNP: 終了時は OFF
         GPIO.cleanup()
 
 
@@ -133,11 +133,7 @@ async def main():
     print("初期化中...")
     vosk_model = vosk.Model(MODEL_PATH)
     vad = webrtcvad.Vad(VAD_MODE)
-    genai.configure(api_key=api_key)
-    gemini = genai.GenerativeModel(
-        model_name=GEMINI_MODEL,
-        system_instruction='あなたはファービーというぬいぐるみロボットです。短く日本語で答えてください。',
-    )
+    gemini = genai.Client(api_key=api_key)
     motor_setup()
     print("初期化完了\n")
 
@@ -165,7 +161,10 @@ async def main():
         # STEP 3: Gemini
         print("▶ STEP 3/5: Gemini API 送信中...")
         t0 = time.time()
-        response = gemini.generate_content(text)
+        response = gemini.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=text,
+        )
         reply = response.text.strip()
         print(f"  応答: 「{reply}」 ({time.time()-t0:.2f}秒)\n")
 

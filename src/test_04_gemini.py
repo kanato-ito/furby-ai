@@ -8,7 +8,7 @@ import os
 import sys
 import time
 
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 MODEL = 'gemini-1.5-flash'
@@ -28,17 +28,16 @@ def main():
         sys.exit(1)
     print(f"[1] APIキー確認: OK（末尾4桁: ...{api_key[-4:]}）\n")
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name=MODEL,
-        system_instruction='あなたはファービーというぬいぐるみロボットです。短く日本語で答えてください。',
-    )
+    client = genai.Client(api_key=api_key)
 
     for i, msg in enumerate(TEST_MESSAGES, 1):
         print(f"[{i}] 送信: 「{msg}」")
         t0 = time.time()
         try:
-            response = model.generate_content(msg)
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=msg,
+            )
             elapsed = time.time() - t0
             print(f"     応答: 「{response.text.strip()}」")
             print(f"     処理時間: {elapsed:.2f}秒\n")
