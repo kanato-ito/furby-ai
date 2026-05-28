@@ -11,7 +11,7 @@ import time
 from google import genai
 from dotenv import load_dotenv
 
-MODEL = 'gemini-2.0-flash'
+MODEL = 'gemini-2.5-flash'
 TEST_MESSAGES = [
     "こんにちは！",
     "好きな食べ物は何ですか？",

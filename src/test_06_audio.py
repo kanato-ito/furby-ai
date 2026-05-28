@@ -4,9 +4,23 @@
 確認内容: aplay / mpg123 でスピーカーから音が出るか確認する
 前提: テスト05 を実行して /tmp/test_tts_ja-JP-NanamiNeural.mp3 が存在すること
       sounds/startup.wav と sounds/error.wav が配置済みであること
+      /boot/firmware/config.txt に dtparam=audio=on が設定・reboot 済みであること
+      sudo amixer cset numid=3 1 でアナログ出力に切り替え済みであること
 """
 import asyncio
 import os
+import subprocess
+
+
+def check_alsa_device() -> bool:
+    result = subprocess.run(['aplay', '-l'], capture_output=True, text=True)
+    if 'bcm2835' in result.stdout:
+        print("[0] ALSA デバイス確認: OK (bcm2835 検出)\n")
+        return True
+    print("[0] ALSA デバイス確認: NG — bcm2835 が見つかりません")
+    print("    対処1: /boot/firmware/config.txt に dtparam=audio=on を追記して reboot")
+    print("    対処2: sudo amixer cset numid=3 1  (アナログ出力に切り替え)\n")
+    return False
 
 
 async def play(file_path: str) -> int:
@@ -23,6 +37,8 @@ async def play(file_path: str) -> int:
 
 async def main():
     print("=== テスト06: 音声再生確認 ===\n")
+
+    check_alsa_device()
 
     test_files = [
         ('TTS生成音声 (MP3, NanamiNeural)', '/tmp/test_tts_ja-JP-NanamiNeural.mp3'),
