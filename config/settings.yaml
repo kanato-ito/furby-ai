@@ -1,0 +1,26 @@
+gemini:
+  model: gemini-2.5-flash
+  max_history: 20
+  timeout_sec: 10
+  max_retries: 3
+
+audio:
+  sample_rate: 16000
+  channels: 1
+  vad_mode: 2
+  silence_duration_ms: 800
+  min_speech_duration_ms: 500
+
+tts:
+  voice: ja-JP-NanamiNeural
+
+motor:
+  pin: 17
+
+paths:
+  vosk_model: models/vosk-model-small-ja-0.22
+  db: data/conversations.db
+  persona: config/persona.txt
+  startup_sound: sounds/startup.wav
+  error_sound: sounds/error.wav
+  tts_output: /tmp/furby_response.mp3
