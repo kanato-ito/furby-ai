@@ -11,7 +11,7 @@ import time
 from google import genai
 from dotenv import load_dotenv
 
-MODEL = 'gemini-1.5-flash'
+MODEL = 'gemini-2.0-flash'
 TEST_MESSAGES = [
     "こんにちは！",
     "好きな食べ物は何ですか？",
@@ -29,6 +29,13 @@ def main():
     print(f"[1] APIキー確認: OK（末尾4桁: ...{api_key[-4:]}）\n")
 
     client = genai.Client(api_key=api_key)
+
+    # 利用可能なモデル一覧を表示
+    print("[2] 利用可能なモデル（generateContent対応）:")
+    for m in client.models.list():
+        if 'generateContent' in (m.supported_actions or []):
+            print(f"    {m.name}")
+    print()
 
     for i, msg in enumerate(TEST_MESSAGES, 1):
         print(f"[{i}] 送信: 「{msg}」")
