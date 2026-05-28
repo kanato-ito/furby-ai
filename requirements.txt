@@ -1,0 +1,9 @@
+sounddevice
+webrtcvad
+vosk
+google-genai
+edge-tts
+RPi.GPIO
+PyYAML
+python-dotenv
+numpy
