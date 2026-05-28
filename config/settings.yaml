@@ -7,15 +7,17 @@ gemini:
 audio:
   sample_rate: 16000
   channels: 1
-  vad_mode: 2
+  vad_mode: 3                  # 0〜3。高いほどノイズに厳しい
   silence_duration_ms: 800
-  min_speech_duration_ms: 500
+  min_speech_duration_ms: 800  # 短い録音（ノイズ起因）を弾く
 
 tts:
   voice: ja-JP-NanamiNeural
 
 motor:
   pin: 17
+  pulse_on_ms: 150   # ON時間（口を開ける）
+  pulse_off_ms: 120  # OFF時間（口を閉じる）
 
 paths:
   vosk_model: models/vosk-model-small-ja-0.22

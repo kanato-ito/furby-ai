@@ -53,7 +53,11 @@ async def main() -> None:
     chat = Chat(api_key, cfg['gemini']['model'], persona, cfg['gemini']['max_history'])
     tts = TTS(cfg['tts']['voice'])
     audio_out = AudioOutput()
-    motor = Motor(cfg['motor']['pin'])
+    motor = Motor(
+        cfg['motor']['pin'],
+        pulse_on_ms=cfg['motor']['pulse_on_ms'],
+        pulse_off_ms=cfg['motor']['pulse_off_ms'],
+    )
     memory = Memory(cfg['paths']['db'])
 
     tts_path = cfg['paths']['tts_output']
@@ -102,9 +106,15 @@ async def main() -> None:
                         await audio_out.play(error_sound)
                     continue
 
-                motor.on()
-                await audio_out.play(tts_path)
-                motor.off()
+                motor_task = asyncio.create_task(motor.pulse())
+                try:
+                    await audio_out.play(tts_path)
+                finally:
+                    motor_task.cancel()
+                    try:
+                        await motor_task
+                    except asyncio.CancelledError:
+                        pass
                 print()
 
             except KeyboardInterrupt:
