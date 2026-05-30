@@ -11,6 +11,10 @@ audio:
   silence_duration_ms: 800
   min_speech_duration_ms: 800  # 短い録音（ノイズ起因）を弾く
 
+stt:
+  model: whisper-large-v3-turbo  # Groq: 216x実時間・無料枠2000req/日
+  language: ja
+
 tts:
   voice: ja-JP-NanamiNeural
 
@@ -20,7 +24,6 @@ motor:
   pulse_off_ms: 120  # OFF時間（口を閉じる）
 
 paths:
-  vosk_model: models/vosk-model-small-ja-0.22
   db: data/conversations.db
   persona: config/persona.txt
   startup_sound: sounds/startup.wav

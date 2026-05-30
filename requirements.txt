@@ -1,6 +1,7 @@
 sounddevice
 webrtcvad
 vosk
+groq
 google-genai
 edge-tts
 RPi.GPIO

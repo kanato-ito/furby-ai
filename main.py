@@ -33,9 +33,13 @@ def load_persona(path: str) -> str:
 
 async def main() -> None:
     load_dotenv()
-    api_key = os.environ.get('GEMINI_API_KEY')
-    if not api_key:
+    gemini_key = os.environ.get('GEMINI_API_KEY')
+    groq_key = os.environ.get('GROQ_API_KEY')
+    if not gemini_key:
         print("ERROR: .env に GEMINI_API_KEY が設定されていません")
+        sys.exit(1)
+    if not groq_key:
+        print("ERROR: .env に GROQ_API_KEY が設定されていません")
         sys.exit(1)
 
     cfg = load_config()
@@ -49,8 +53,13 @@ async def main() -> None:
         silence_duration_ms=cfg['audio']['silence_duration_ms'],
         min_speech_duration_ms=cfg['audio']['min_speech_duration_ms'],
     )
-    stt = STT(cfg['paths']['vosk_model'], cfg['audio']['sample_rate'])
-    chat = Chat(api_key, cfg['gemini']['model'], persona, cfg['gemini']['max_history'])
+    stt = STT(
+        api_key=groq_key,
+        model=cfg['stt']['model'],
+        sample_rate=cfg['audio']['sample_rate'],
+        language=cfg['stt']['language'],
+    )
+    chat = Chat(gemini_key, cfg['gemini']['model'], persona, cfg['gemini']['max_history'])
     tts = TTS(cfg['tts']['voice'])
     audio_out = AudioOutput()
     motor = Motor(
