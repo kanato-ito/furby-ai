@@ -1,0 +1,19 @@
+[Unit]
+Description=Furby AI Service
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ito
+WorkingDirectory=/home/ito/Documents/furby-ai
+ExecStart=/home/ito/Documents/furby-ai/venv/bin/python3 /home/ito/Documents/furby-ai/main.py
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
