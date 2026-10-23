@@ -4,7 +4,6 @@ groq
 google-genai>=2.33
 edge-tts>=7.2
 gpiozero
-lgpio
 PyYAML
 python-dotenv
 numpy

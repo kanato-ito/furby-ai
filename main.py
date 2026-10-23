@@ -88,6 +88,7 @@ async def speak_reply(
 
 
 async def main() -> None:
+    sys.stdout.reconfigure(line_buffering=True)  # systemd(journal) でもログを即時表示
     _install_signal_handlers()
     load_dotenv()
     gemini_key = os.environ.get('GEMINI_API_KEY')

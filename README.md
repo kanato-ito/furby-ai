@@ -57,10 +57,12 @@ furby-ai/
 cd /home/ito/Documents
 git clone <repo> furby-ai
 cd furby-ai
-sudo apt install -y python3-venv mpg123 portaudio19-dev python3-dev swig liblgpio-dev
+sudo apt install -y python3-venv mpg123 portaudio19-dev python3-dev python3-lgpio
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+# gpiozero が使う lgpio は apt 版を venv にリンク（pip 版はビルドが必要なため）
+ln -sf /usr/lib/python3/dist-packages/lgpio.py /usr/lib/python3/dist-packages/_lgpio.cpython-3*-linux-gnu.so venv/lib/python3.*/site-packages/
 
 # 2. .env を作成
 cat > .env << 'EOF'
