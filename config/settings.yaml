@@ -1,6 +1,6 @@
 gemini:
   model: gemini-3.5-flash-lite   # 賢さ優先なら gemini-3.8-flash（thinking_level は low 以上）
-  thinking_level: minimal         # minimal / low / medium / high。低いほど速い
+  thinking_level: low             # minimal / low / medium / high。低いほど速い
   max_history: 20
   timeout_sec: 10
   max_retries: 3
