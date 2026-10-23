@@ -1,9 +1,13 @@
 gemini:
-  model: gemini-3.5-flash-lite   # 賢さ優先なら gemini-3.8-flash（thinking_level は low 以上）
-  thinking_level: low             # minimal / low / medium / high。低いほど速い
+  model: gemini-3.8-flash        # 有料枠。速さ優先なら gemini-3.5-flash-lite
+  thinking_level: low             # 3.8-flash は low / medium / high。低いほど速い
+  google_search: true             # 天気・ニュースなど最新情報を検索して答える（月5,000回まで無料）
   max_history: 20
-  timeout_sec: 10
+  timeout_sec: 20                 # 検索を使うと5秒以上かかることがある
   max_retries: 3
+
+user:
+  location: ""                    # 例: 東京都世田谷区。天気などで場所の指定がないときに使う
 
 audio:
   sample_rate: 16000

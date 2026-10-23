@@ -125,6 +125,8 @@ async def main() -> None:
         thinking_level=cfg['gemini'].get('thinking_level', 'minimal'),
         timeout_sec=cfg['gemini']['timeout_sec'],
         max_retries=cfg['gemini']['max_retries'],
+        google_search=cfg['gemini'].get('google_search', False),
+        location=cfg.get('user', {}).get('location', ''),
     )
     tts = TTS(cfg['tts']['voice'])
     audio_out = AudioOutput()
