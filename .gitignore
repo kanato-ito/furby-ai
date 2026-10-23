@@ -1,0 +1,8 @@
+.DS_Store
+.env
+venv/
+__pycache__/
+data/
+models/
+/test_*.wav
+/test_*.mp3

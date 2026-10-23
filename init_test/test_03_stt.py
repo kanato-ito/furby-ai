@@ -3,6 +3,7 @@
 実行方法: python3 src/test_03_stt.py
 確認内容: 発話を検出してVoskでテキスト変換できるか確認する（3回繰り返し）
 前提: models/vosk-model-small-ja-0.22/ が存在すること
+注意: 旧構成（Vosk）の検証用。現在の STT は Groq（test_09）。実行には別途 pip install vosk が必要
 """
 import collections
 import json

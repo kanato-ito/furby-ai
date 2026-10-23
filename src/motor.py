@@ -3,11 +3,12 @@
 PNP トランジスタ駆動のため:
   LOW  = モーター ON
   HIGH = モーター OFF
+gpiozero の active_high=False でこの反転を表す（on() で LOW を出力）。
 """
 import asyncio
 
 try:
-    import RPi.GPIO as GPIO
+    from gpiozero import DigitalOutputDevice
     HAS_GPIO = True
 except ImportError:
     HAS_GPIO = False
@@ -18,18 +19,20 @@ class Motor:
         self.pin = pin
         self.pulse_on_s = pulse_on_ms / 1000
         self.pulse_off_s = pulse_off_ms / 1000
+        self.device = None
         if HAS_GPIO:
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(self.pin, GPIO.OUT)
-            GPIO.output(self.pin, GPIO.HIGH)
+            try:
+                self.device = DigitalOutputDevice(pin, active_high=False, initial_value=False)
+            except Exception as e:  # Pi 以外（ピンファクトリなし）
+                print(f"[Motor] GPIO 無効: {e}")
 
     def on(self) -> None:
-        if HAS_GPIO:
-            GPIO.output(self.pin, GPIO.LOW)
+        if self.device:
+            self.device.on()
 
     def off(self) -> None:
-        if HAS_GPIO:
-            GPIO.output(self.pin, GPIO.HIGH)
+        if self.device:
+            self.device.off()
 
     async def pulse(self) -> None:
         """キャンセルされるまでパクパク動く（口の開閉を模擬）"""
@@ -44,6 +47,6 @@ class Motor:
             raise
 
     def cleanup(self) -> None:
-        if HAS_GPIO:
-            GPIO.output(self.pin, GPIO.HIGH)
-            GPIO.cleanup()
+        if self.device:
+            self.device.off()
+            self.device.close()

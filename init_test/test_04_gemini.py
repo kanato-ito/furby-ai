@@ -1,6 +1,6 @@
 """
 テスト04: Gemini API 接続確認
-実行方法: python3 src/test_04_gemini.py
+実行方法: python3 init_test/test_04_gemini.py
 確認内容: Gemini API への接続・レスポンス取得が正常に動作するか確認する
 前提: .env に GEMINI_API_KEY が設定されていること
 """
@@ -8,10 +8,15 @@ import os
 import sys
 import time
 
+import yaml
 from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
-MODEL = 'gemini-2.5-flash'
+with open('config/settings.yaml', encoding='utf-8') as f:
+    _cfg = yaml.safe_load(f)['gemini']
+MODEL = _cfg['model']
+THINKING_LEVEL = _cfg.get('thinking_level', 'minimal')
 TEST_MESSAGES = [
     "こんにちは！",
     "好きな食べ物は何ですか？",
@@ -26,7 +31,8 @@ def main():
     if not api_key:
         print("NG: .env に GEMINI_API_KEY が設定されていません")
         sys.exit(1)
-    print(f"[1] APIキー確認: OK（末尾4桁: ...{api_key[-4:]}）\n")
+    print(f"[1] APIキー確認: OK（末尾4桁: ...{api_key[-4:]}）")
+    print(f"    モデル: {MODEL} / thinking_level: {THINKING_LEVEL}\n")
 
     client = genai.Client(api_key=api_key)
 
@@ -44,6 +50,9 @@ def main():
             response = client.models.generate_content(
                 model=MODEL,
                 contents=msg,
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_level=THINKING_LEVEL.upper()),
+                ),
             )
             elapsed = time.time() - t0
             print(f"     応答: 「{response.text.strip()}」")
