@@ -50,6 +50,10 @@ class Chat:
             tools=self.tools,
         )
 
+    async def warmup(self) -> None:
+        """起動時に接続を確立しておき、最初の応答の遅延を避ける（生成はしないので課金なし）"""
+        await self.client.aio.models.get(model=self.model)
+
     def _build_contents(self, user_text: str, history: list[dict]) -> list[dict]:
         contents = [
             {"role": msg["role"], "parts": [{"text": msg["content"]}]}

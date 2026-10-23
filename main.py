@@ -141,6 +141,11 @@ async def main() -> None:
     startup_sound = cfg['paths']['startup_sound']
     error_sound = cfg['paths']['error_sound']
 
+    try:
+        await chat.warmup()
+    except Exception as e:
+        print(f"[初期化] Gemini への事前接続に失敗（続行します）: {e}")
+
     print(f"[初期化] 完了 (session_id: {session_id})\n")
 
     if Path(startup_sound).exists():

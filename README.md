@@ -6,7 +6,7 @@
 ## 構成
 
 - **STT**: Groq Whisper Large v3 Turbo（クラウド、無料枠 2,000req/日）
-- **会話AI**: Google Gemini 3.8 Flash（有料枠・思考 low・ストリーミング応答・Google 検索で最新情報に回答）
+- **会話AI**: Google Gemini 3.6 Flash（有料枠・思考 minimal・ストリーミング応答・Google 検索で最新情報に回答）
 - **TTS**: Microsoft Edge TTS（無料、応答を 1 文ずつ合成して再生）
 - **音声出力**: bcm2835 PWM(GPIO12) → PAM8403 アンプ → ファービー純正スピーカー
 - **モーター**: GPIO 17 + PNP トランジスタ（S8550）でパルス駆動（gpiozero）
