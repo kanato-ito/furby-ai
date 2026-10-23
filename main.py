@@ -126,7 +126,7 @@ async def main() -> None:
         timeout_sec=cfg['gemini']['timeout_sec'],
         max_retries=cfg['gemini']['max_retries'],
         google_search=cfg['gemini'].get('google_search', False),
-        location=cfg.get('user', {}).get('location', ''),
+        location=os.environ.get('FURBY_LOCATION') or cfg.get('user', {}).get('location', ''),
     )
     tts = TTS(cfg['tts']['voice'])
     audio_out = AudioOutput()

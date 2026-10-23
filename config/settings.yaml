@@ -8,6 +8,7 @@ gemini:
 
 user:
   location: ""                    # 例: 東京都世田谷区。天気などで場所の指定がないときに使う
+                                  # 公開リポジトリに載せたくない場合は .env の FURBY_LOCATION に書く（こちらが優先）
 
 audio:
   sample_rate: 16000

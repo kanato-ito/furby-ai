@@ -68,6 +68,7 @@ ln -sf /usr/lib/python3/dist-packages/lgpio.py /usr/lib/python3/dist-packages/_l
 cat > .env << 'EOF'
 GEMINI_API_KEY=your_gemini_key
 GROQ_API_KEY=your_groq_key
+FURBY_LOCATION=神奈川県横浜市   # 任意。天気などの既定の地域
 EOF
 
 # 3. ALSA 構成（再生 bcm2835 / 録音 USB マイク）
