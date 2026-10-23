@@ -35,5 +35,14 @@ class Memory:
         rows = cursor.fetchall()
         return [{"role": r, "content": c} for r, c in reversed(rows)]
 
+    def get_recent_all(self, n: int = 40) -> list[dict]:
+        """全セッションの直近の会話（設定ページのログ表示用）"""
+        cursor = self.conn.execute(
+            """SELECT role, content, datetime(created_at, 'localtime') FROM conversations
+               ORDER BY id DESC LIMIT ?""",
+            (n,),
+        )
+        return [{"role": r, "content": c, "time": t} for r, c, t in reversed(cursor.fetchall())]
+
     def close(self) -> None:
         self.conn.close()

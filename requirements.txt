@@ -5,5 +5,6 @@ google-genai>=2.33
 edge-tts>=7.2
 gpiozero
 PyYAML
+aiohttp
 python-dotenv
 numpy

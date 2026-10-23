@@ -10,31 +10,37 @@ import sys
 import uuid
 from pathlib import Path
 
-import yaml
 from dotenv import load_dotenv
 
 from src.audio_input import AudioInput
-from src.audio_output import AudioOutput
+from src.audio_output import AudioOutput, set_volume
 from src.chat import Chat
+from src.config import load_config, load_persona, user_location
 from src.memory import Memory
 from src.motor import Motor
 from src.stt import STT
 from src.tts import TTS
-
-
-def load_config(path: str = 'config/settings.yaml') -> dict:
-    with open(path, encoding='utf-8') as f:
-        return yaml.safe_load(f)
-
-
-def load_persona(path: str) -> str:
-    with open(path, encoding='utf-8') as f:
-        return f.read().strip()
+from src.web import start_web
 
 
 def _install_signal_handlers() -> None:
     """SIGTERM (systemd stop) を SIGINT 同等に扱い、KeyboardInterrupt を発生させる"""
     signal.signal(signal.SIGTERM, lambda *_: signal.raise_signal(signal.SIGINT))
+
+
+def build_chat(cfg: dict, api_key: str) -> Chat:
+    g = cfg['gemini']
+    return Chat(
+        api_key,
+        g['model'],
+        load_persona(cfg),
+        max_history=g['max_history'],
+        thinking_level=g.get('thinking_level', 'minimal'),
+        timeout_sec=g['timeout_sec'],
+        max_retries=g['max_retries'],
+        google_search=g.get('google_search', False),
+        location=user_location(cfg),
+    )
 
 
 async def play_with_motor(audio_out: AudioOutput, motor: Motor, path: str) -> None:
@@ -87,6 +93,95 @@ async def speak_reply(
     return ''.join(sentences)
 
 
+class Furby:
+    """会話に使う部品一式。設定ページで変更されたら作り直す。
+
+    lock は「1 回の受け答え」「テスト再生」「設定の反映」が重ならないようにするためのもの。
+    録音待ちの間は lock を持たず、割り込むときは audio_input.interrupt() で録音を中断させる。
+    """
+
+    def __init__(self, gemini_key: str, groq_key: str) -> None:
+        self.gemini_key = gemini_key
+        self.groq_key = groq_key
+        self.lock = asyncio.Lock()
+        self.reload_pending = False
+        self.audio_out = AudioOutput()
+        self.motor: Motor | None = None
+        self._build()
+
+    def _build(self) -> None:
+        cfg = self.cfg = load_config()
+        self.audio_input = AudioInput(
+            sample_rate=cfg['audio']['sample_rate'],
+            vad_mode=cfg['audio']['vad_mode'],
+            silence_duration_ms=cfg['audio']['silence_duration_ms'],
+            min_speech_duration_ms=cfg['audio']['min_speech_duration_ms'],
+        )
+        self.stt = STT(
+            api_key=self.groq_key,
+            model=cfg['stt']['model'],
+            sample_rate=cfg['audio']['sample_rate'],
+            language=cfg['stt']['language'],
+        )
+        self.chat = build_chat(cfg, self.gemini_key)
+        self.tts = TTS(
+            cfg['tts']['voice'],
+            rate_percent=cfg['tts'].get('rate_percent', 0),
+            pitch_hz=cfg['tts'].get('pitch_hz', 0),
+        )
+        if self.motor:
+            self.motor.cleanup()
+        self.motor = Motor(
+            cfg['motor']['pin'],
+            pulse_on_ms=cfg['motor']['pulse_on_ms'],
+            pulse_off_ms=cfg['motor']['pulse_off_ms'],
+        )
+
+    async def prepare(self) -> None:
+        """音量の反映と Gemini への事前接続"""
+        volume = self.cfg['audio'].get('volume_percent')
+        if volume is not None:
+            try:
+                await set_volume(volume)
+            except Exception as e:
+                print(f"[設定] 音量の変更に失敗: {e}")
+        try:
+            await self.chat.warmup()
+        except Exception as e:
+            print(f"[初期化] Gemini への事前接続に失敗（続行します）: {e}")
+
+    def request_reload(self) -> None:
+        """設定ページから呼ばれる。録音待ちを中断して、次の受け答えの前に作り直す"""
+        self.reload_pending = True
+        self.audio_input.interrupt()
+
+    async def apply_pending(self) -> None:
+        if self.reload_pending:
+            self.reload_pending = False
+            self._build()
+            await self.prepare()
+            print("[設定] 変更を反映しました")
+
+    async def play_error(self) -> None:
+        if Path(self.cfg['paths']['error_sound']).exists():
+            await self.audio_out.play(self.cfg['paths']['error_sound'])
+
+    async def say(self, text: str) -> None:
+        """テスト再生（設定ページから）"""
+        self.audio_input.interrupt()
+        async with self.lock:
+            await self.apply_pending()
+            base, ext = os.path.splitext(self.cfg['paths']['tts_output'])
+            path = f"{base}_test{ext}"
+            await self.tts.synthesize(text, path)
+            await play_with_motor(self.audio_out, self.motor, path)
+
+    def close(self) -> None:
+        self.audio_input.interrupt()  # 録音スレッドを止めないと終了時に待たされる
+        if self.motor:
+            self.motor.cleanup()
+
+
 async def main() -> None:
     sys.stdout.reconfigure(line_buffering=True)  # systemd(journal) でもログを即時表示
     _install_signal_handlers()
@@ -100,97 +195,76 @@ async def main() -> None:
         print("ERROR: .env に GROQ_API_KEY が設定されていません")
         sys.exit(1)
 
-    cfg = load_config()
-    persona = load_persona(cfg['paths']['persona'])
     session_id = str(uuid.uuid4())
 
     print("[初期化] モジュールを起動中...")
-    audio_input = AudioInput(
-        sample_rate=cfg['audio']['sample_rate'],
-        vad_mode=cfg['audio']['vad_mode'],
-        silence_duration_ms=cfg['audio']['silence_duration_ms'],
-        min_speech_duration_ms=cfg['audio']['min_speech_duration_ms'],
-    )
-    stt = STT(
-        api_key=groq_key,
-        model=cfg['stt']['model'],
-        sample_rate=cfg['audio']['sample_rate'],
-        language=cfg['stt']['language'],
-    )
-    chat = Chat(
-        gemini_key,
-        cfg['gemini']['model'],
-        persona,
-        max_history=cfg['gemini']['max_history'],
-        thinking_level=cfg['gemini'].get('thinking_level', 'minimal'),
-        timeout_sec=cfg['gemini']['timeout_sec'],
-        max_retries=cfg['gemini']['max_retries'],
-        google_search=cfg['gemini'].get('google_search', False),
-        location=os.environ.get('FURBY_LOCATION') or cfg.get('user', {}).get('location', ''),
-    )
-    tts = TTS(cfg['tts']['voice'])
-    audio_out = AudioOutput()
-    motor = Motor(
-        cfg['motor']['pin'],
-        pulse_on_ms=cfg['motor']['pulse_on_ms'],
-        pulse_off_ms=cfg['motor']['pulse_off_ms'],
-    )
+    furby = Furby(gemini_key, groq_key)
+    cfg = furby.cfg
     memory = Memory(cfg['paths']['db'])
+    await furby.prepare()
 
-    tts_path = cfg['paths']['tts_output']
-    startup_sound = cfg['paths']['startup_sound']
-    error_sound = cfg['paths']['error_sound']
-
-    try:
-        await chat.warmup()
-    except Exception as e:
-        print(f"[初期化] Gemini への事前接続に失敗（続行します）: {e}")
+    web = None
+    web_password = os.environ.get('FURBY_WEB_PASSWORD')
+    if web_password:
+        port = cfg.get('web', {}).get('port', 8080)
+        web = await start_web(furby, memory, port, web_password)
+        print(f"[初期化] 設定ページ: http://furby-ai.local:{port}")
+    else:
+        print("[初期化] .env に FURBY_WEB_PASSWORD がないため設定ページは無効")
 
     print(f"[初期化] 完了 (session_id: {session_id})\n")
 
-    if Path(startup_sound).exists():
-        await audio_out.play(startup_sound)
+    if Path(cfg['paths']['startup_sound']).exists():
+        await furby.audio_out.play(cfg['paths']['startup_sound'])
 
     print("ファービーAI 起動完了。話しかけてください。(Ctrl+C で終了)\n")
 
     try:
         while True:
             try:
-                pcm = await audio_input.record_utterance()
+                async with furby.lock:  # テスト再生・設定の反映が終わるのを待つ
+                    await furby.apply_pending()
 
-                text = await stt.transcribe(pcm)
-                if not text:
-                    print("[STT] (認識失敗)")
-                    if Path(error_sound).exists():
-                        await audio_out.play(error_sound)
-                    continue
-                print(f"[You ] {text}")
+                pcm = await furby.audio_input.record_utterance()
+                if not pcm:
+                    continue  # 設定ページからの割り込みで中断
 
-                history = memory.get_recent_history(session_id, cfg['gemini']['max_history'])
+                async with furby.lock:
+                    text = await furby.stt.transcribe(pcm)
+                    if not text:
+                        print("[STT] (認識失敗)")
+                        await furby.play_error()
+                        continue
+                    print(f"[You ] {text}")
 
-                try:
-                    reply = await speak_reply(chat, tts, audio_out, motor, text, history, tts_path)
-                except Exception as e:
-                    print(f"[Reply] エラー: {e}")
-                    if Path(error_sound).exists():
-                        await audio_out.play(error_sound)
-                    continue
+                    history = memory.get_recent_history(session_id, furby.cfg['gemini']['max_history'])
 
-                memory.save_message(session_id, 'user', text)
-                memory.save_message(session_id, 'model', reply)
-                print()
+                    try:
+                        reply = await speak_reply(
+                            furby.chat, furby.tts, furby.audio_out, furby.motor,
+                            text, history, furby.cfg['paths']['tts_output'],
+                        )
+                    except Exception as e:
+                        print(f"[Reply] エラー: {e}")
+                        await furby.play_error()
+                        continue
+
+                    memory.save_message(session_id, 'user', text)
+                    memory.save_message(session_id, 'model', reply)
+                    print()
 
             except KeyboardInterrupt:
                 raise
             except Exception as e:
                 print(f"[Loop] 予期しないエラー: {e}")
-                if Path(error_sound).exists():
-                    await audio_out.play(error_sound)
+                await furby.play_error()
 
     except KeyboardInterrupt:
         print("\n[終了] Ctrl+C 検出。シャットダウンします...")
     finally:
-        motor.cleanup()
+        if web:
+            await web.cleanup()
+        furby.close()
         memory.close()
         print("[終了] クリーンアップ完了")
 

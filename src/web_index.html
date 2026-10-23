@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ファービー">
+<title>ファービー設定</title>
+<style>
+  :root {
+    --bg: #f4f2ee; --card: #ffffff; --text: #1f1d1a; --muted: #6f6a62;
+    --line: #e2ddd5; --accent: #c2410c; --accent-text: #ffffff; --ok: #15803d; --err: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161513; --card: #22201d; --text: #f1eee9; --muted: #a39d93;
+      --line: #36322d; --accent: #fb923c; --accent-text: #1a1208; --ok: #4ade80; --err: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    padding: env(safe-area-inset-top) 16px calc(96px + env(safe-area-inset-bottom));
+  }
+  header { padding: 20px 0 8px; }
+  h1 { font-size: 22px; margin: 0; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+  nav { display: flex; gap: 8px; margin: 12px 0; }
+  nav button { flex: 1; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin: 12px 0; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  label { display: block; margin: 12px 0 4px; font-size: 14px; color: var(--muted); }
+  label:first-of-type { margin-top: 0; }
+  .hint { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  }
+  textarea { min-height: 240px; font-size: 14px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .row output { min-width: 4.5em; text-align: right; font-variant-numeric: tabular-nums; }
+  .check { display: flex; align-items: center; gap: 10px; margin-top: 12px; color: var(--text); font-size: 15px; }
+  .check input { width: 22px; height: 22px; accent-color: var(--accent); }
+  button {
+    font: inherit; border-radius: 10px; padding: 10px 14px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text);
+  }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  button[aria-pressed=true] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .5; }
+  .savebar {
+    position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line); display: flex; gap: 10px; align-items: center;
+  }
+  .savebar button { flex: 0 0 auto; }
+  #status { flex: 1; font-size: 14px; color: var(--muted); }
+  #status.ok { color: var(--ok); } #status.err { color: var(--err); }
+  .log { list-style: none; padding: 0; margin: 0; }
+  .log li { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .log .who { font-weight: 600; margin-right: 6px; }
+  .log .time { color: var(--muted); font-size: 12px; display: block; }
+  pre { white-space: pre-wrap; word-break: break-all; font-size: 11px; color: var(--muted); max-height: 320px; overflow: auto; margin: 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ファービー設定</h1>
+  <p>保存すると、次の会話から反映されます</p>
+</header>
+
+<nav>
+  <button type="button" data-tab="settings" aria-pressed="true">設定</button>
+  <button type="button" data-tab="persona" aria-pressed="false">人格</button>
+  <button type="button" data-tab="logs" aria-pressed="false">ログ</button>
+</nav>
+
+<div id="tab-settings">
+  <section>
+    <h2>テスト再生</h2>
+    <label for="say-text">話させる文</label>
+    <input type="text" id="say-text" value="こんにちは、ぼくファービーだよ！ウー♪">
+    <p class="hint">声や口の動きを変えたら、保存してからここで試せます</p>
+    <div style="margin-top:10px"><button type="button" id="say-btn">話させる</button></div>
+  </section>
+
+  <section>
+    <h2>頭脳（Gemini）</h2>
+    <label for="model">モデル</label>
+    <select id="model" data-key="gemini.model">
+      <option value="gemini-3.6-flash">gemini-3.6-flash（おすすめ・速い）</option>
+      <option value="gemini-3.8-flash">gemini-3.8-flash（少し賢い・約2秒遅い）</option>
+      <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite（最速・安い）</option>
+    </select>
+    <label for="thinking">思考量</label>
+    <select id="thinking" data-key="gemini.thinking_level">
+      <option value="minimal">minimal（最速）</option>
+      <option value="low">low</option>
+      <option value="medium">medium</option>
+      <option value="high">high（遅い）</option>
+    </select>
+    <p class="hint">gemini-3.8-flash は low 以上</p>
+    <label class="check"><input type="checkbox" data-key="gemini.google_search"> Google 検索で最新情報を調べる</label>
+    <label for="location" style="margin-top:12px">住んでいる地域</label>
+    <input type="text" id="location" data-key="user.location" placeholder="例: 東京都世田谷区">
+  </section>
+
+  <section>
+    <h2>声</h2>
+    <label for="voice">声の種類</label>
+    <select id="voice" data-key="tts.voice">
+      <option value="ja-JP-NanamiNeural">Nanami（女性）</option>
+      <option value="ja-JP-KeitaNeural">Keita（男性）</option>
+    </select>
+    <label for="rate">話す速さ</label>
+    <div class="row"><input type="range" id="rate" min="-50" max="100" step="5" data-key="tts.rate_percent"><output data-unit="%"></output></div>
+    <label for="pitch">声の高さ</label>
+    <div class="row"><input type="range" id="pitch" min="-50" max="100" step="5" data-key="tts.pitch_hz"><output data-unit="Hz"></output></div>
+    <label for="volume">音量</label>
+    <div class="row"><input type="range" id="volume" min="0" max="100" step="1" data-key="audio.volume_percent"><output data-unit="%"></output></div>
+  </section>
+
+  <section>
+    <h2>口の動き</h2>
+    <label for="pon">開けている時間</label>
+    <div class="row"><input type="range" id="pon" min="50" max="1500" step="10" data-key="motor.pulse_on_ms"><output data-unit="ms"></output></div>
+    <label for="poff">閉じている時間</label>
+    <div class="row"><input type="range" id="poff" min="50" max="3000" step="10" data-key="motor.pulse_off_ms"><output data-unit="ms"></output></div>
+  </section>
+
+  <section>
+    <h2>マイク</h2>
+    <label for="silence">話し終わりと判断する無音の長さ</label>
+    <div class="row"><input type="range" id="silence" min="150" max="2000" step="50" data-key="audio.silence_duration_ms"><output data-unit="ms"></output></div>
+    <p class="hint">長くすると途中で切れにくくなるが、返事が遅くなる</p>
+    <label for="minspeech">短すぎる音を無視する長さ</label>
+    <div class="row"><input type="range" id="minspeech" min="100" max="2000" step="50" data-key="audio.min_speech_duration_ms"><output data-unit="ms"></output></div>
+    <label for="vad">雑音への厳しさ</label>
+    <div class="row"><input type="range" id="vad" min="0" max="3" step="1" data-key="audio.vad_mode"><output></output></div>
+    <p class="hint">0 = 小さな声も拾う / 3 = 雑音を強く無視</p>
+  </section>
+</div>
+
+<div id="tab-persona" hidden>
+  <section>
+    <h2>人格</h2>
+    <textarea id="persona" aria-label="人格の設定"></textarea>
+    <p class="hint" id="persona-note"></p>
+    <div style="margin-top:10px"><button type="button" id="persona-reset">元の人格に戻す</button></div>
+  </section>
+</div>
+
+<div id="tab-logs" hidden>
+  <section>
+    <h2>最近の会話</h2>
+    <ul class="log" id="conv"></ul>
+  </section>
+  <section>
+    <h2>動作ログ</h2>
+    <pre id="journal"></pre>
+  </section>
+</div>
+
+<div class="savebar">
+  <span id="status"></span>
+  <button type="button" id="reload-btn">再読込</button>
+  <button type="button" class="primary" id="save-btn">保存</button>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const fields = [...document.querySelectorAll('[data-key]')];
+const status = (msg, cls = '') => { const el = $('#status'); el.textContent = msg; el.className = cls; };
+
+function getPath(obj, path) { return path.split('.').reduce((o, k) => (o ?? {})[k], obj); }
+function setPath(obj, path, value) {
+  const keys = path.split('.'); const last = keys.pop();
+  keys.reduce((o, k) => (o[k] ??= {}), obj)[last] = value;
+}
+function showValue(el) {
+  const out = el.parentElement.querySelector('output');
+  if (out) out.textContent = (el.id === 'rate' || el.id === 'pitch') && el.value > 0
+    ? `+${el.value}${out.dataset.unit}` : `${el.value}${out.dataset.unit ?? ''}`;
+}
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+async function load() {
+  status('読み込み中…');
+  const s = await api('/api/settings');
+  for (const el of fields) {
+    const v = getPath(s, el.dataset.key);
+    if (el.type === 'checkbox') el.checked = !!v;
+    else if (el.tagName === 'SELECT' && v && ![...el.options].some(o => o.value === v)) {
+      el.add(new Option(v, v)); el.value = v;
+    } else el.value = v ?? '';
+    if (el.type === 'range') showValue(el);
+  }
+  $('#persona').value = s.persona;
+  $('#persona-note').textContent = s.persona_is_custom
+    ? 'この画面で編集した人格を使っています' : 'リポジトリの config/persona.txt を使っています';
+  $('#persona-reset').disabled = !s.persona_is_custom;
+  status('');
+}
+
+async function save() {
+  const body = {};
+  for (const el of fields) {
+    const v = el.type === 'checkbox' ? el.checked : el.type === 'range' ? Number(el.value) : el.value;
+    setPath(body, el.dataset.key, v);
+  }
+  body.persona = $('#persona').value;
+  $('#save-btn').disabled = true; status('保存中…');
+  try { await api('/api/settings', body); status('保存しました。次の会話から反映されます', 'ok'); await load(); status('保存しました', 'ok'); }
+  catch (e) { status(e.message, 'err'); }
+  finally { $('#save-btn').disabled = false; }
+}
+
+async function loadLogs() {
+  const d = await api('/api/logs');
+  const ul = $('#conv'); ul.replaceChildren();
+  for (const m of d.conversations.slice().reverse()) {
+    const li = document.createElement('li');
+    const t = document.createElement('span'); t.className = 'time'; t.textContent = m.time;
+    const w = document.createElement('span'); w.className = 'who'; w.textContent = m.role === 'user' ? 'あなた' : 'ファービー';
+    li.append(t, w, document.createTextNode(m.content)); ul.append(li);
+  }
+  if (!d.conversations.length) ul.innerHTML = '<li>まだ会話がありません</li>';
+  $('#journal').textContent = d.journal.split('\n').reverse().join('\n');
+}
+
+for (const el of fields) if (el.type === 'range') el.addEventListener('input', () => showValue(el));
+for (const b of document.querySelectorAll('nav button')) b.addEventListener('click', () => {
+  for (const o of document.querySelectorAll('nav button')) {
+    o.setAttribute('aria-pressed', o === b); $('#tab-' + o.dataset.tab).hidden = o !== b;
+  }
+  if (b.dataset.tab === 'logs') loadLogs().catch(e => status(e.message, 'err'));
+});
+$('#save-btn').addEventListener('click', save);
+$('#reload-btn').addEventListener('click', () => {
+  const logs = !$('#tab-logs').hidden;
+  (logs ? loadLogs() : load()).then(() => status('最新の状態です')).catch(e => status(e.message, 'err'));
+});
+$('#say-btn').addEventListener('click', async () => {
+  $('#say-btn').disabled = true; status('話しています…');
+  try { await api('/api/say', { text: $('#say-text').value }); status('再生しました', 'ok'); }
+  catch (e) { status(e.message, 'err'); }
+  finally { $('#say-btn').disabled = false; }
+});
+$('#persona-reset').addEventListener('click', async () => {
+  if (!confirm('この画面で編集した人格を捨てて、元の人格に戻しますか？')) return;
+  try { await api('/api/persona/reset', {}); await load(); status('元の人格に戻しました', 'ok'); }
+  catch (e) { status(e.message, 'err'); }
+});
+load().catch(e => status(e.message, 'err'));
+</script>
+</body>
+</html>

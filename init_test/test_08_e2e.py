@@ -15,10 +15,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from dotenv import load_dotenv
 
-from main import load_config, load_persona, speak_reply
+from main import build_chat, speak_reply
 from src.audio_input import AudioInput
 from src.audio_output import AudioOutput
-from src.chat import Chat
+from src.config import load_config
 from src.motor import Motor
 from src.stt import STT
 from src.tts import TTS
@@ -53,18 +53,8 @@ async def main():
         min_speech_duration_ms=cfg['audio']['min_speech_duration_ms'],
     )
     stt = STT(groq_key, cfg['stt']['model'], cfg['audio']['sample_rate'], cfg['stt']['language'])
-    chat = Chat(
-        gemini_key,
-        cfg['gemini']['model'],
-        load_persona(cfg['paths']['persona']),
-        max_history=cfg['gemini']['max_history'],
-        thinking_level=cfg['gemini'].get('thinking_level', 'minimal'),
-        timeout_sec=cfg['gemini']['timeout_sec'],
-        max_retries=cfg['gemini']['max_retries'],
-        google_search=cfg['gemini'].get('google_search', False),
-        location=os.environ.get('FURBY_LOCATION') or cfg.get('user', {}).get('location', ''),
-    )
-    tts = TTS(cfg['tts']['voice'])
+    chat = build_chat(cfg, gemini_key)
+    tts = TTS(cfg['tts']['voice'], cfg['tts'].get('rate_percent', 0), cfg['tts'].get('pitch_hz', 0))
     audio_out = TimedAudioOutput()
     motor = Motor(cfg['motor']['pin'], cfg['motor']['pulse_on_ms'], cfg['motor']['pulse_off_ms'])
     print(f"初期化完了（モデル: {cfg['gemini']['model']} / thinking_level: "

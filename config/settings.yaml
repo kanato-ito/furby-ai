@@ -8,14 +8,16 @@ gemini:
 
 user:
   location: ""                    # 例: 東京都世田谷区。天気などで場所の指定がないときに使う
-                                  # 公開リポジトリに載せたくない場合は .env の FURBY_LOCATION に書く（こちらが優先）
+                                  # 公開リポジトリに載せたくない場合は設定ページか .env の FURBY_LOCATION で設定する
+# 設定ページで変更した値は config/local.yaml（git 管理外）に保存され、このファイルより優先される
 
 audio:
   sample_rate: 16000
   channels: 1
   vad_mode: 3                  # 0〜3。高いほどノイズに厳しい
-  silence_duration_ms: 800
+  silence_duration_ms: 300      # この長さの無音で話し終わりと判断。長いほど途中で切れにくいが反応が遅い
   min_speech_duration_ms: 800  # 短い録音（ノイズ起因）を弾く
+  volume_percent: null         # 0〜100。null なら OS の音量（amixer PCM）を変更しない
 
 stt:
   model: whisper-large-v3-turbo  # Groq: 216x実時間・無料枠2000req/日
@@ -23,11 +25,16 @@ stt:
 
 tts:
   voice: ja-JP-NanamiNeural
+  rate_percent: 0    # 話す速さ（-50〜+100）
+  pitch_hz: 0        # 声の高さ（-50〜+100）
 
 motor:
   pin: 17
   pulse_on_ms: 300   # ON時間（口を開ける）
   pulse_off_ms: 2000  # OFF時間（口を閉じる）
+
+web:
+  port: 8080         # 設定ページ http://furby-ai.local:8080 （.env の FURBY_WEB_PASSWORD が必要）
 
 paths:
   db: data/conversations.db

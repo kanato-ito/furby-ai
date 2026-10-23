@@ -6,3 +6,6 @@ data/
 models/
 /test_*.wav
 /test_*.mp3
+config/local.yaml
+config/persona.local.txt
+*.tmp

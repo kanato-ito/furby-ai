@@ -36,7 +36,10 @@ furby-ai/
 │   ├── tts.py               # edge-tts
 │   ├── audio_output.py      # mpg123/aplay
 │   ├── motor.py             # GPIO + パルス駆動
-│   └── memory.py            # SQLite 会話履歴
+│   ├── memory.py            # SQLite 会話履歴
+│   ├── config.py            # 設定の読み書き（settings.yaml + local.yaml）
+│   ├── web.py               # iPhone 用の設定ページ
+│   └── web_index.html
 ├── init_test/
 │   └── test_01〜09_*.py     # 単体検証テスト
 ├── systemd/
@@ -68,7 +71,8 @@ ln -sf /usr/lib/python3/dist-packages/lgpio.py /usr/lib/python3/dist-packages/_l
 cat > .env << 'EOF'
 GEMINI_API_KEY=your_gemini_key
 GROQ_API_KEY=your_groq_key
-FURBY_LOCATION=東京都世田谷区   # 任意。天気などの既定の地域
+FURBY_LOCATION=東京都世田谷区   # 任意。天気などの既定の地域（設定ページでも変更可）
+FURBY_WEB_PASSWORD=好きなパスワード   # 設定ページを使う場合
 EOF
 
 # 3. ALSA 構成（再生 bcm2835 / 録音 USB マイク）
@@ -99,6 +103,17 @@ sudo systemctl stop furby
 sudo systemctl restart furby
 journalctl -u furby -f       # ログ追跡
 ```
+
+## iPhone から調整する（設定ページ）
+
+ファービーと同じ Wi-Fi につないだ iPhone の Safari で `http://furby-ai.local:8080` を開く
+（ユーザー名は何でもよく、パスワードは `.env` の `FURBY_WEB_PASSWORD`）。
+共有ボタン →「ホーム画面に追加」でアプリのように使える。
+
+- モデル・思考量・Google 検索・地域、声（種類・速さ・高さ・音量）、口の動き、マイク感度、人格を変更できる
+- 保存すると次の会話から反映される（再起動は不要）。「テスト再生」で声と口の動きをその場で試せる
+- 変更は `config/local.yaml` と `config/persona.local.txt`（git 管理外）に保存され、`settings.yaml` / `persona.txt` より優先される
+- 「ログ」タブで最近の会話と動作ログを確認できる
 
 ## 性能（実測）
 

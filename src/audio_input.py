@@ -25,6 +25,11 @@ class AudioInput:
         self.vad = webrtcvad.Vad(vad_mode)
         self.silence_frames = silence_duration_ms // self.FRAME_DURATION_MS
         self.min_speech_frames = min_speech_duration_ms // self.FRAME_DURATION_MS
+        self._stop = threading.Event()
+
+    def interrupt(self) -> None:
+        """録音待ちを中断させる（record_utterance は b'' を返す）"""
+        self._stop.set()
 
     async def record_utterance(self) -> bytes:
         return await asyncio.get_running_loop().run_in_executor(None, self._record_sync)
@@ -47,6 +52,9 @@ class AudioInput:
         ):
             while True:
                 time.sleep(0.01)
+                if self._stop.is_set():
+                    self._stop.clear()
+                    return b''
                 with lock:
                     batch, queue[:] = queue[:], []
                 for frame in batch:
@@ -56,7 +64,8 @@ class AudioInput:
                         if sum(1 for _, s in ring if s) >= 0.9 * ring.maxlen:
                             triggered = True
                             voiced.extend(f for f, _ in ring)
-                            ring.clear()
+                            # 話し終わりは silence_duration_ms 分の無音で判定する
+                            ring = collections.deque(maxlen=self.silence_frames)
                     else:
                         voiced.append(frame)
                         ring.append((frame, is_speech))
@@ -65,4 +74,4 @@ class AudioInput:
                                 return b''.join(voiced)
                             triggered = False
                             voiced.clear()
-                            ring.clear()
+                            ring = collections.deque(maxlen=self.RING_BUFFER_FRAMES)
