@@ -32,8 +32,10 @@ INT_FIELDS = {
 }
 STR_FIELDS = {
     ('gemini', 'model'): re.compile(r'^gemini-[a-z0-9.\-]+$'),
-    ('tts', 'voice'): re.compile(r'^[a-z]{2}-[A-Z]{2}-\w+Neural$'),
+    ('tts', 'voice'): re.compile(r'^([a-z]{2}-[A-Z]{2}-\w+Neural|voicevox:\d+)$'),
+    ('tts', 'voicevox_url'): re.compile(r'^(https?://[\w.\-]+(:\d+)?)?$'),
     ('user', 'location'): re.compile(r'^.{0,50}$'),
+    ('startup', 'greeting'): re.compile(r'^.{0,50}$'),
 }
 THINKING_LEVELS = ('minimal', 'low', 'medium', 'high')
 
@@ -114,7 +116,11 @@ def build_app(furby, memory, password: str) -> web.Application:
         return web.json_response({
             'gemini': {k: cfg['gemini'].get(k) for k in ('model', 'thinking_level', 'google_search')},
             'user': {'location': user_location(cfg)},
-            'tts': {k: cfg['tts'].get(k, 0) for k in ('voice', 'rate_percent', 'pitch_hz')},
+            'startup': {'greeting': cfg.get('startup', {}).get('greeting', '')},
+            'tts': {
+                **{k: cfg['tts'].get(k, 0) for k in ('voice', 'rate_percent', 'pitch_hz')},
+                'voicevox_url': cfg['tts'].get('voicevox_url', ''),
+            },
             'motor': {k: cfg['motor'][k] for k in ('pulse_on_ms', 'pulse_off_ms')},
             'audio': {
                 **{k: cfg['audio'][k] for k in ('vad_mode', 'silence_duration_ms', 'min_speech_duration_ms')},

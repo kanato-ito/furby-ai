@@ -75,8 +75,7 @@ async def speak_reply(
                 print(f"[AI  ] {sentence}")
                 path = f"{base}_{len(sentences)}{ext}"
                 sentences.append(sentence)
-                await tts.synthesize(sentence, path)
-                await queue.put(path)
+                await queue.put(await tts.synthesize(sentence, path))
         finally:
             await queue.put(None)
 
@@ -128,6 +127,8 @@ class Furby:
             cfg['tts']['voice'],
             rate_percent=cfg['tts'].get('rate_percent', 0),
             pitch_hz=cfg['tts'].get('pitch_hz', 0),
+            voicevox_url=cfg['tts'].get('voicevox_url', ''),
+            fallback_voice=cfg['tts'].get('fallback_voice', 'ja-JP-NanamiNeural'),
         )
         if self.motor:
             self.motor.cleanup()
@@ -172,9 +173,46 @@ class Furby:
         async with self.lock:
             await self.apply_pending()
             base, ext = os.path.splitext(self.cfg['paths']['tts_output'])
-            path = f"{base}_test{ext}"
-            await self.tts.synthesize(text, path)
+            path = await self.tts.synthesize(text, f"{base}_test{ext}")
             await play_with_motor(self.audio_out, self.motor, path)
+
+    async def greet(self, retry_sec: float = 30) -> None:
+        """起動のあいさつ。Gemini につながって声も合成できたら話す＝話しかけてよい合図。
+
+        VOICEVOX は家の中だけで合成できるので、声が出せることではなく Gemini（インターネット）に
+        つながることを確かめる。Wi-Fi のつながりが遅いことがあるので retry_sec の間は再試行し、
+        それでもだめなら前もって作っておいた「インターネット接続を確認してね」を流す。
+        """
+        startup = self.cfg.get('startup', {})
+        text = (startup.get('greeting') or '').strip()
+        if not text:
+            return
+        offline = Path(self.cfg['paths']['offline_sound'])  # 拡張子は声に合わせて付く
+        offline_files = sorted(offline.parent.glob(offline.name + '.*'))
+        base, ext = os.path.splitext(self.cfg['paths']['tts_output'])
+        deadline = asyncio.get_running_loop().time() + retry_sec
+        while True:
+            try:
+                await asyncio.wait_for(self.chat.warmup(), timeout=10)
+                path = await asyncio.wait_for(self.tts.synthesize(text, f"{base}_greeting{ext}"), timeout=20)
+                break
+            except Exception as e:
+                if asyncio.get_running_loop().time() >= deadline:
+                    print(f"[起動] インターネットにつながりません: {e!r}")
+                    if offline_files:
+                        await self.audio_out.play(str(offline_files[0]))
+                    else:
+                        await self.play_error()
+                    return
+                await asyncio.sleep(3)
+        await play_with_motor(self.audio_out, self.motor, path)
+
+        if not offline_files and startup.get('offline_message'):
+            try:
+                offline.parent.mkdir(parents=True, exist_ok=True)
+                await self.tts.synthesize(startup['offline_message'], str(offline))
+            except Exception as e:
+                print(f"[起動] ネット未接続時の音声を作れませんでした: {e}")
 
     def close(self) -> None:
         self.audio_input.interrupt()  # 録音スレッドを止めないと終了時に待たされる
@@ -214,8 +252,7 @@ async def main() -> None:
 
     print(f"[初期化] 完了 (session_id: {session_id})\n")
 
-    if Path(cfg['paths']['startup_sound']).exists():
-        await furby.audio_out.play(cfg['paths']['startup_sound'])
+    await furby.greet()
 
     print("ファービーAI 起動完了。話しかけてください。(Ctrl+C で終了)\n")
 

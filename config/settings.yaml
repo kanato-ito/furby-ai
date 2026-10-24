@@ -24,7 +24,9 @@ stt:
   language: ja
 
 tts:
-  voice: ja-JP-NanamiNeural
+  voice: voicevox:3  # ja-JP-NanamiNeural など（edge-tts）か voicevox:<話者ID>（3 = ずんだもん ノーマル）
+  voicevox_url: ""   # VOICEVOX エンジンを動かしている PC。例: http://my-mac.local:50021（設定ページでも変更可）
+  fallback_voice: ja-JP-NanamiNeural  # VOICEVOX につながらないときの声
   rate_percent: 0    # 話す速さ（-50〜+100）
   pitch_hz: 0        # 声の高さ（-50〜+100）
 
@@ -33,12 +35,16 @@ motor:
   pulse_on_ms: 300   # ON時間（口を開ける）
   pulse_off_ms: 2000  # OFF時間（口を閉じる）
 
+startup:
+  greeting: おはよう！話しかけてね    # 起動が終わったら話す。聞こえたら話しかけてよい合図。空なら話さない
+  offline_message: インターネット接続を確認してね  # あいさつを合成できないときに流す
+
 web:
   port: 8080         # 設定ページ http://furby-ai.local:8080 （.env の FURBY_WEB_PASSWORD が必要）
 
 paths:
   db: data/conversations.db
   persona: config/persona.txt
-  startup_sound: sounds/startup.wav
+  offline_sound: data/offline      # offline_message の音声（拡張子は声に合わせて付く）。ネットにつながったときに作っておく
   error_sound: sounds/error.wav
   tts_output: /tmp/furby_response.mp3

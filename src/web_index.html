@@ -114,13 +114,27 @@
     <select id="voice" data-key="tts.voice">
       <option value="ja-JP-NanamiNeural">Nanami（女性）</option>
       <option value="ja-JP-KeitaNeural">Keita（男性）</option>
+      <optgroup label="ずんだもん（VOICEVOX）">
+        <option value="voicevox:3">ずんだもん ノーマル</option>
+        <option value="voicevox:1">ずんだもん あまあま</option>
+        <option value="voicevox:7">ずんだもん ツンツン</option>
+        <option value="voicevox:5">ずんだもん セクシー</option>
+        <option value="voicevox:22">ずんだもん ささやき</option>
+        <option value="voicevox:38">ずんだもん ヒソヒソ</option>
+      </optgroup>
     </select>
+    <label for="voicevox-url">VOICEVOX を動かしている PC</label>
+    <input type="text" id="voicevox-url" data-key="tts.voicevox_url" placeholder="例: http://my-mac.local:50021">
+    <p class="hint">ずんだもんの声はこの PC で作ります。PC が止まっているときは Nanami の声になります</p>
     <label for="rate">話す速さ</label>
     <div class="row"><input type="range" id="rate" min="-50" max="100" step="5" data-key="tts.rate_percent"><output data-unit="%"></output></div>
     <label for="pitch">声の高さ</label>
     <div class="row"><input type="range" id="pitch" min="-50" max="100" step="5" data-key="tts.pitch_hz"><output data-unit="Hz"></output></div>
     <label for="volume">音量</label>
     <div class="row"><input type="range" id="volume" min="0" max="100" step="1" data-key="audio.volume_percent"><output data-unit="%"></output></div>
+    <label for="greeting">起動時のあいさつ</label>
+    <input type="text" id="greeting" data-key="startup.greeting" maxlength="50" placeholder="空にすると話さない">
+    <p class="hint">電源を入れて準備ができたら話します。聞こえたら話しかけて OK（約 45 秒）</p>
   </section>
 
   <section>

@@ -2,6 +2,8 @@
 テスト05: edge-tts 音声合成確認
 実行方法: python3 src/test_05_tts.py
 確認内容: edge-tts でテキストから MP3 音声ファイルを生成できるか確認する
+          VOICEVOX の URL を渡すとずんだもん（WAV）も確認する
+          例: python3 init_test/test_05_tts.py http://my-mac.local:50021
 """
 import asyncio
 import os
@@ -9,6 +11,9 @@ import sys
 import time
 
 import edge_tts
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from src.tts import TTS
 
 VOICES = [
     'ja-JP-NanamiNeural',  # 女性
@@ -35,9 +40,21 @@ async def main():
             print(f"  NG: {e}")
             sys.exit(1)
 
+    if len(sys.argv) > 1:
+        print("音声: ずんだもん（VOICEVOX ノーマル）")
+        tts = TTS('voicevox:3', voicevox_url=sys.argv[1])
+        t0 = time.time()
+        path = await tts.synthesize(TEST_TEXT, '/tmp/test_tts_zundamon')
+        if not path.endswith('.wav'):
+            print(f"  NG: VOICEVOX ({sys.argv[1]}) につながりません")
+            sys.exit(1)
+        print(f"  OK: {time.time() - t0:.2f}秒, {os.path.getsize(path):,} bytes → {path}")
+
     print("\n再生して音声を確認してください:")
     for voice in VOICES:
         print(f"  mpg123 /tmp/test_tts_{voice}.mp3  # {voice}")
+    if len(sys.argv) > 1:
+        print("  aplay /tmp/test_tts_zundamon.wav  # ずんだもん")
 
     print("\nどちらの声をファービーに使うか決定し、settings.yaml の voice を更新してください")
     print("\n✓ テスト05 完了")

@@ -7,7 +7,7 @@
 
 - **STT**: Groq Whisper Large v3 Turbo（クラウド、無料枠 2,000req/日）
 - **会話AI**: Google Gemini 3.6 Flash（有料枠・思考 minimal・ストリーミング応答・Google 検索で最新情報に回答）
-- **TTS**: Microsoft Edge TTS（無料、応答を 1 文ずつ合成して再生）
+- **TTS**: VOICEVOX（ずんだもん。同じ Wi-Fi の PC で動かす）。PC が止まっているときは Microsoft Edge TTS（無料）。応答を 1 文ずつ合成して再生
 - **音声出力**: bcm2835 PWM(GPIO12) → PAM8403 アンプ → ファービー純正スピーカー
 - **モーター**: GPIO 17 + PNP トランジスタ（S8550）でパルス駆動（gpiozero）
 
@@ -46,7 +46,6 @@ furby-ai/
 │   ├── furby.service
 │   └── install_service.sh
 ├── sounds/
-│   ├── startup.wav
 │   └── error.wav
 └── requirements.txt
 ```
@@ -114,6 +113,33 @@ journalctl -u furby -f       # ログ追跡
 - 保存すると次の会話から反映される（再起動は不要）。「テスト再生」で声と口の動きをその場で試せる
 - 変更は `config/local.yaml` と `config/persona.local.txt`（git 管理外）に保存され、`settings.yaml` / `persona.txt` より優先される
 - 「ログ」タブで最近の会話と動作ログを確認できる
+
+## ずんだもんの声（VOICEVOX）
+
+ずんだもんの声は VOICEVOX エンジンで作る。Pi Zero 2W はメモリが足りず動かないので、同じ Wi-Fi の PC か Mac で動かし、
+Pi から呼ぶ。PC が止まっているときは自動で Nanami（Edge TTS）の声になる（60 秒ごとに VOICEVOX を試し直す）。
+
+```bash
+# PC / Mac 側（Docker）。--restart=always で PC 起動時に自動で立ち上がる
+docker run -d --name voicevox --restart=always -p 50021:50021 voicevox/voicevox_engine:cpu-latest
+curl http://localhost:50021/version
+
+# Pi 側でつながるか確認
+curl http://<PC名>.local:50021/version
+python3 init_test/test_05_tts.py http://<PC名>.local:50021
+```
+
+設定ページの「声」で「VOICEVOX を動かしている PC」に `http://<PC名>.local:50021` を入れ、声の種類でずんだもんを選ぶ。
+Mac はスリープ中は合成できないので、その間は Nanami の声になる。
+音声を公開するときはクレジット表記「VOICEVOX:ずんだもん」が必要（[利用規約](https://zunko.jp/con_ongen_kiyaku.html)）。
+
+## 起動の合図
+
+電源を入れて準備ができると（約 45 秒）、口を動かしながら「おはよう！話しかけてね」と話す。聞こえたら話しかけてよい。
+あいさつの前に Gemini につながるか確かめるので、声が出ればネットにもつながっている。
+30 秒待ってもつながらないときは「インターネット接続を確認してね」と話す（ネットにつながったときに
+`data/offline.*` として作っておく音声。まだ無ければ `sounds/error.wav`）。
+あいさつの文は設定ページか `config/settings.yaml` の `startup.greeting` で変更でき、空にすると話さない。
 
 ## 性能（実測）
 
