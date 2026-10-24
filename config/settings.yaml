@@ -39,6 +39,11 @@ startup:
   greeting: おはよう！話しかけてね    # 起動が終わったら話す。聞こえたら話しかけてよい合図。空なら話さない
   offline_message: インターネット接続を確認してね  # あいさつを合成できないときに流す
 
+morning:
+  enabled: true
+  time: "09:00"      # 毎朝この時刻に天気とごみの日を話す（つけっぱなしにしておく）。引用符が必要
+  garbage: ""        # 1 行に 1 種類。例: "燃えるごみ: 月 木\n資源ごみ: 水\n不燃ごみ: 第2 第4 金"（設定ページで編集できる）
+
 web:
   port: 8080         # 設定ページ http://furby-ai.local:8080 （.env の FURBY_WEB_PASSWORD が必要）
 

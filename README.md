@@ -37,6 +37,7 @@ furby-ai/
 │   ├── audio_output.py      # mpg123/aplay
 │   ├── motor.py             # GPIO + パルス駆動
 │   ├── memory.py            # SQLite 会話履歴
+│   ├── garbage.py           # ごみの収集日
 │   ├── config.py            # 設定の読み書き（settings.yaml + local.yaml）
 │   ├── web.py               # iPhone 用の設定ページ
 │   └── web_index.html
@@ -140,6 +141,15 @@ Mac はスリープ中は合成できないので、その間は Nanami の声�
 30 秒待ってもつながらないときは「インターネット接続を確認してね」と話す（ネットにつながったときに
 `data/offline.*` として作っておく音声。まだ無ければ `sounds/error.wav`）。
 あいさつの文は設定ページか `config/settings.yaml` の `startup.greeting` で変更でき、空にすると話さない。
+
+## 朝のお知らせ
+
+毎朝 9:00 に、口を動かしながら今日の天気（最高・最低気温、傘が要るか）と出すごみを話す。ファービーはつけっぱなしにしておく。
+
+- 設定ページの「朝のお知らせ」で、オン・オフ、時刻、ごみの日を変えられる。「今すぐ試す」でその場で聞ける
+- ごみの日は 1 行に 1 種類（`燃えるごみ: 月 木` / `不燃ごみ: 第2 第4 金`）。登録すると「今日のごみは？」「明日なに出す？」にも答える
+- 天気は Google 検索で調べるので、「Google 検索で最新情報を調べる」と「住んでいる地域」を設定しておく。Gemini につながらないときはごみの日だけ話す
+- 時刻は Pi の時計で判定する。`timedatectl` でタイムゾーンが `Asia/Tokyo` になっているか確認する（違えば `sudo timedatectl set-timezone Asia/Tokyo`）
 
 ## 性能（実測）
 

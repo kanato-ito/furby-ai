@@ -1,14 +1,15 @@
 """Gemini API による会話生成"""
 import re
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from google import genai
 from google.genai import types
 
+from src.garbage import WEEKDAYS, GarbageRule, garbage_on
+
 # この文字で区切って 1 文ずつ TTS に渡す
 SENTENCE_END = re.compile(r'(.+?[。！？!?♪]+)', re.S)
-WEEKDAYS = '月火水木金土日'
 
 
 class Chat:
@@ -23,6 +24,7 @@ class Chat:
         max_retries: int = 3,
         google_search: bool = False,
         location: str = '',
+        garbage: list[GarbageRule] | None = None,
     ) -> None:
         self.client = genai.Client(
             api_key=api_key,
@@ -35,6 +37,7 @@ class Chat:
         self.max_history = max_history
         self.system_prompt = system_prompt
         self.location = location
+        self.garbage = garbage or []
         self.thinking_config = types.ThinkingConfig(thinking_level=thinking_level.upper())
         self.tools = [types.Tool(google_search=types.GoogleSearch())] if google_search else None
 
@@ -44,6 +47,10 @@ class Chat:
         context = f"\n\n【現在日時】{now:%Y年%m月%d日}（{WEEKDAYS[now.weekday()]}）{now:%H:%M}"
         if self.location:
             context += f"\n【ユーザーの住んでいる地域】{self.location}（天気などで場所の指定がないときはここを使う）"
+        if self.garbage:
+            def names(day) -> str:
+                return '、'.join(garbage_on(self.garbage, day)) or 'なし'
+            context += f"\n【ごみの日】今日: {names(now.date())} / 明日: {names(now.date() + timedelta(days=1))}"
         return types.GenerateContentConfig(
             system_instruction=self.system_prompt + context,
             thinking_config=self.thinking_config,

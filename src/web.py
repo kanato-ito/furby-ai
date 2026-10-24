@@ -16,6 +16,7 @@ from src.audio_output import get_volume, set_volume
 from src.config import (
     load_persona, persona_is_custom, reset_persona, save_local, save_persona, user_location,
 )
+from src.garbage import parse_garbage
 
 INDEX_HTML = Path(__file__).with_name('web_index.html')
 
@@ -36,6 +37,7 @@ STR_FIELDS = {
     ('tts', 'voicevox_url'): re.compile(r'^(https?://[\w.\-]+(:\d+)?)?$'),
     ('user', 'location'): re.compile(r'^.{0,50}$'),
     ('startup', 'greeting'): re.compile(r'^.{0,50}$'),
+    ('morning', 'time'): re.compile(r'^([01]\d|2[0-3]):[0-5]\d$'),
 }
 THINKING_LEVELS = ('minimal', 'low', 'medium', 'high')
 
@@ -75,6 +77,14 @@ def _validate(body: dict) -> dict:
         put('gemini', 'thinking_level', level)
     if 'google_search' in gemini:
         put('gemini', 'google_search', bool(gemini['google_search']))
+
+    morning = body.get('morning', {})
+    if 'enabled' in morning:
+        put('morning', 'enabled', bool(morning['enabled']))
+    if 'garbage' in morning:
+        garbage = str(morning['garbage']).strip()[:1000]
+        parse_garbage(garbage)  # 書き方がおかしければ ValueError
+        put('morning', 'garbage', garbage)
     return out
 
 
@@ -117,6 +127,11 @@ def build_app(furby, memory, password: str) -> web.Application:
             'gemini': {k: cfg['gemini'].get(k) for k in ('model', 'thinking_level', 'google_search')},
             'user': {'location': user_location(cfg)},
             'startup': {'greeting': cfg.get('startup', {}).get('greeting', '')},
+            'morning': {
+                'enabled': cfg['morning'].get('enabled', False),
+                'time': str(cfg['morning'].get('time', '09:00')),
+                'garbage': cfg['morning'].get('garbage', ''),
+            },
             'tts': {
                 **{k: cfg['tts'].get(k, 0) for k in ('voice', 'rate_percent', 'pitch_hz')},
                 'voicevox_url': cfg['tts'].get('voicevox_url', ''),
@@ -171,6 +186,15 @@ def build_app(furby, memory, password: str) -> web.Application:
             return web.json_response({'ok': False, 'error': 'テキストが空です'}, status=400)
         try:
             await furby.say(text)
+        except Exception as e:
+            return web.json_response({'ok': False, 'error': str(e)}, status=500)
+        return web.json_response({'ok': True})
+
+    @routes.post('/api/morning')
+    async def post_morning(_):
+        """朝のお知らせを今すぐ試す（会話の履歴には残さない）"""
+        try:
+            await furby.morning([])
         except Exception as e:
             return web.json_response({'ok': False, 'error': str(e)}, status=500)
         return web.json_response({'ok': True})

@@ -8,6 +8,7 @@ import os
 import signal
 import sys
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,6 +17,7 @@ from src.audio_input import AudioInput
 from src.audio_output import AudioOutput, set_volume
 from src.chat import Chat
 from src.config import load_config, load_persona, user_location
+from src.garbage import garbage_on, parse_garbage
 from src.memory import Memory
 from src.motor import Motor
 from src.stt import STT
@@ -30,6 +32,11 @@ def _install_signal_handlers() -> None:
 
 def build_chat(cfg: dict, api_key: str) -> Chat:
     g = cfg['gemini']
+    try:
+        garbage = parse_garbage(cfg.get('morning', {}).get('garbage', ''))
+    except ValueError as e:  # 設定ページでは弾くが、ファイルを直接書き換えたとき用
+        print(f"[設定] {e}（ごみの日を使わずに続行します）")
+        garbage = []
     return Chat(
         api_key,
         g['model'],
@@ -40,7 +47,17 @@ def build_chat(cfg: dict, api_key: str) -> Chat:
         max_retries=g['max_retries'],
         google_search=g.get('google_search', False),
         location=user_location(cfg),
+        garbage=garbage,
     )
+
+
+# 朝のお知らせのときに、ユーザーの発言の代わりに Gemini へ渡す
+MORNING_PROMPT = (
+    "（これはユーザーの発言ではなく、毎朝の自動のお知らせです）"
+    "おはようのあいさつに続けて、地域の今日の天気（天気、最高気温と最低気温、傘が要るか）を調べて伝えてください。"
+    "調べられなければ天気には触れないでください。"
+    "今日出すごみがあれば忘れないように伝え、なければごみには触れないでください。全部で 3 文くらいにしてください。"
+)
 
 
 async def play_with_motor(audio_out: AudioOutput, motor: Motor, path: str) -> None:
@@ -214,10 +231,50 @@ class Furby:
             except Exception as e:
                 print(f"[起動] ネット未接続時の音声を作れませんでした: {e}")
 
+    async def morning(self, history: list[dict]) -> str:
+        """朝のお知らせ（天気とごみの日）。Gemini が使えないときはごみの日だけ話す"""
+        self.audio_input.interrupt()
+        async with self.lock:
+            await self.apply_pending()
+            try:
+                return await speak_reply(
+                    self.chat, self.tts, self.audio_out, self.motor,
+                    MORNING_PROMPT, history, self.cfg['paths']['tts_output'],
+                )
+            except Exception as e:
+                print(f"[朝] Gemini で作れませんでした: {e}")
+            garbage = garbage_on(self.chat.garbage, datetime.now().date())
+            text = f"おはよう！今日は{'と'.join(garbage)}の日だよ。" if garbage else "おはよう！"
+            base, ext = os.path.splitext(self.cfg['paths']['tts_output'])
+            path = await self.tts.synthesize(text, f"{base}_morning{ext}")
+            await play_with_motor(self.audio_out, self.motor, path)
+            return text
+
     def close(self) -> None:
         self.audio_input.interrupt()  # 録音スレッドを止めないと終了時に待たされる
         if self.motor:
             self.motor.cleanup()
+
+
+async def morning_loop(furby: Furby, memory: Memory, session_id: str) -> None:
+    """毎朝 morning.time に天気とごみの日を話す。設定ページで時刻を変えてもすぐ反映されるよう毎回読み直す"""
+    done_on = None
+    while True:
+        await asyncio.sleep(20)
+        m = furby.cfg.get('morning', {})
+        now = datetime.now()
+        if not m.get('enabled') or now.strftime('%H:%M') != str(m.get('time')) or done_on == now.date():
+            continue
+        done_on = now.date()
+        try:
+            history = memory.get_recent_history(session_id, furby.cfg['gemini']['max_history'])
+            reply = await furby.morning(history)
+            # 続けて「傘いる？」などと聞かれたときのために履歴に残す
+            memory.save_message(session_id, 'user', '（朝のお知らせ）')
+            memory.save_message(session_id, 'model', reply)
+            print()
+        except Exception as e:
+            print(f"[朝] お知らせに失敗: {e}")
 
 
 async def main() -> None:
@@ -253,6 +310,7 @@ async def main() -> None:
     print(f"[初期化] 完了 (session_id: {session_id})\n")
 
     await furby.greet()
+    morning_task = asyncio.create_task(morning_loop(furby, memory, session_id))
 
     print("ファービーAI 起動完了。話しかけてください。(Ctrl+C で終了)\n")
 
@@ -299,6 +357,7 @@ async def main() -> None:
     except KeyboardInterrupt:
         print("\n[終了] Ctrl+C 検出。シャットダウンします...")
     finally:
+        morning_task.cancel()
         if web:
             await web.cleanup()
         furby.close()

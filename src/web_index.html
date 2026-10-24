@@ -138,6 +138,18 @@
   </section>
 
   <section>
+    <h2>朝のお知らせ</h2>
+    <label class="check" style="margin-top:0"><input type="checkbox" data-key="morning.enabled"> 毎朝、天気とごみの日を話す</label>
+    <label for="morning-time" style="margin-top:12px">時刻</label>
+    <input type="time" id="morning-time" data-key="morning.time">
+    <p class="hint">ファービーをつけっぱなしにしておくと、この時刻に話します</p>
+    <label for="garbage">ごみの日</label>
+    <textarea id="garbage" data-key="morning.garbage" style="min-height:110px" placeholder="燃えるごみ: 月 木&#10;資源ごみ: 水&#10;不燃ごみ: 第2 第4 金"></textarea>
+    <p class="hint">1 行に 1 種類。「第2 第4 金」のように書くと、その月の第何週だけになります。「今日のごみは？」と聞いても答えます</p>
+    <div style="margin-top:10px"><button type="button" id="morning-btn">今すぐ試す</button></div>
+  </section>
+
+  <section>
     <h2>口の動き</h2>
     <label for="pon">開けている時間</label>
     <div class="row"><input type="range" id="pon" min="50" max="1500" step="10" data-key="motor.pulse_on_ms"><output data-unit="ms"></output></div>
@@ -270,6 +282,12 @@ $('#say-btn').addEventListener('click', async () => {
   try { await api('/api/say', { text: $('#say-text').value }); status('再生しました', 'ok'); }
   catch (e) { status(e.message, 'err'); }
   finally { $('#say-btn').disabled = false; }
+});
+$('#morning-btn').addEventListener('click', async () => {
+  $('#morning-btn').disabled = true; status('話しています…（天気を調べるので少しかかります）');
+  try { await api('/api/morning', {}); status('再生しました', 'ok'); }
+  catch (e) { status(e.message, 'err'); }
+  finally { $('#morning-btn').disabled = false; }
 });
 $('#persona-reset').addEventListener('click', async () => {
   if (!confirm('この画面で編集した人格を捨てて、元の人格に戻しますか？')) return;
