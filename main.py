@@ -20,6 +20,7 @@ from src.config import load_config, load_persona, user_location
 from src.garbage import garbage_on, parse_garbage
 from src.memory import Memory
 from src.motor import Motor
+from src.network import watch_network
 from src.stt import STT
 from src.tts import TTS
 from src.web import start_web
@@ -311,6 +312,7 @@ async def main() -> None:
 
     await furby.greet()
     morning_task = asyncio.create_task(morning_loop(furby, memory, session_id))
+    network_task = asyncio.create_task(watch_network(furby.request_reload))  # 古い接続を捨てる
 
     print("ファービーAI 起動完了。話しかけてください。(Ctrl+C で終了)\n")
 
@@ -358,6 +360,7 @@ async def main() -> None:
         print("\n[終了] Ctrl+C 検出。シャットダウンします...")
     finally:
         morning_task.cancel()
+        network_task.cancel()
         if web:
             await web.cleanup()
         furby.close()

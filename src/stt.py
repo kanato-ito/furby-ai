@@ -18,7 +18,9 @@ class STT:
         sample_rate: int = 16000,
         language: str = 'ja',
     ) -> None:
-        self.client = Groq(api_key=api_key)
+        # 既定（60 秒・再試行 2 回）だと、ネットワーク切り替え直後に古い接続で数分待たされる。
+        # 短く切り上げれば、再試行は新しい接続で行われる
+        self.client = Groq(api_key=api_key, timeout=10.0, max_retries=2)
         self.model = model
         self.sample_rate = sample_rate
         self.language = language
